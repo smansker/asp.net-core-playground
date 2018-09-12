@@ -18,3 +18,4 @@ A place to store my demos and examples for asp.net core
 6. Configuration
 7. IHostedService and BackgroundService
 8. EF Core (basic)
+9. HttpClientFactory with Policies
