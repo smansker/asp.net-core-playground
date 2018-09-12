@@ -6,6 +6,7 @@ A place to store my demos and examples for asp.net core
 - [Microsoft Documentation](https://docs.microsoft.com/en-us/)
 - [.NET Downloads](https://www.microsoft.com/net/download)
 - [.NET Core Support](https://www.microsoft.com/net/support/policy)
+- [IHostedService Example](https://docs.microsoft.com/en-us/dotnet/standard/microservices-architecture/multi-container-microservice-net-applications/background-tasks-with-ihostedservice)
 
 ## Planned Topics
 
