@@ -1,4 +1,4 @@
-# Exercise 2 [WIP]
+# Exercise 2
 
 ## Introduction to ASP.NET
 
@@ -8,8 +8,7 @@ In this exercise, we will explore the very basics of delivering content via ASP.
 
 ## Links
 
-[Application Startup](https://docs.microsoft.com/en-us/aspnet/core/fundamentals/startup?view=aspnetcore-2.1)
-[Dependency Injection](https://docs.microsoft.com/en-us/aspnet/core/fundamentals/dependency-injection?view=aspnetcore-2.1)
+[ASP.NET Core fundamentals](https://docs.microsoft.com/en-us/aspnet/core/fundamentals/?view=aspnetcore-2.1)
 
 ## Exercise
 
@@ -41,6 +40,8 @@ Now we need to adjust the project file, switching it from a console application 
 ```
 Here, we've identified that we wish to use the Web SDK, and have linked a new package. This package is referred to as a Meta-Package, and contains a core set of asp.net core functionality. This meta package is different from standard NuGet packages, and is not deployed or distributed with the application. Instead, it is part of the ASP.NET Core runtime environment, which must be installed on target machines. For more information on Meta-Packages, go [here](https://docs.microsoft.com/en-us/aspnet/core/fundamentals/metapackage-app?view=aspnetcore-2.1).
 
+Because we started with a Console application, we will need to run ```dotnet restore``` in the project folder, so it can correctly build the nuget files to prepare it for asp.net core.
+
 Next, we need to define the startup class, and initialize our host settings, in the main Program file:
 
 ```cs
@@ -52,8 +53,7 @@ public class Program
     }
 
     public static IWebHostBuilder CreateWebHostBuilder(string[] args) =>
-        WebHost.CreateDefaultBuilder(args)
-            .UseStartup<Startup>();
+        WebHost.CreateDefaultBuilder<Startup>(args);
 }
 ```
 
@@ -69,42 +69,50 @@ At this point, we have identified a class for the app to use to configure itself
 In the same directory as the Program.cs file, create file named Startup.cs, and place the follow contents in it:
 
 ```cs
-public class Startup
-{
-    public void ConfigureServices(IServiceCollection services)
-    {
-    }
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.DependencyInjection;
 
-    public void Configure(IApplicationBuilder app)
+namespace site
+{
+    public class Startup
     {
-        app.UseStaticFiles();
+        public void ConfigureServices(IServiceCollection services)
+        {
+        }
+
+        public void Configure(IApplicationBuilder app)
+        {
+            app.UseStaticFiles();
+        }
     }
 }
 ```
 
 Finally, let's provide a placeholder web page for our new site to provide. Create a new folder named _wwwroot_ and place it alongside the Program.cs and Startup.cs files. Inside of it, add a simple index.html page.
 
-Now let's try and run this thing.
+Now let's try and run this thing. Type ```dotnet run``` in the project's directory, and then browse to ```https://localhost:5001/index.html```.
 
 Notice that you must type the full url to the index.html page, and that navigating to the root of the application does nothing. Let's inform our app that it should honor default pages when loading up. Modify the Startup.cs file to include the following:
 
 ```cs
-public class Startup
-{
-    public void ConfigureServices(IServiceCollection services)
-    {
-    }
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.DependencyInjection;
 
-    public void Configure(IApplicationBuilder app)
+namespace site
+{
+    public class Startup
     {
-        app.UseDefaultFiles();
-        app.UseStaticFiles();
+        public void ConfigureServices(IServiceCollection services)
+        {
+        }
+
+        public void Configure(IApplicationBuilder app)
+        {
+            app.UseDefaultFiles();
+            app.UseStaticFiles();
+        }
     }
 }
 ```
 
-Now run the app. You'll notice that it loads your web page automatically.
-
-### Understanding the WebHost stuff
-
-[https://github.com/aspnet/MetaPackages/blob/rel/2.0.0-preview1/src/Microsoft.AspNetCore/WebHost.cs](https://github.com/aspnet/MetaPackages/blob/rel/2.0.0-preview1/src/Microsoft.AspNetCore/WebHost.cs)
+Now run the app. Browse to ```https://localhost:5001```. Now it finds and loads your web page automatically.
