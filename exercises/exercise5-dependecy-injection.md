@@ -95,11 +95,11 @@ public void Configure(IApplicationBuilder app, IHostingEnvironment env)
 
 Run the app, and check the console for the output from our use case.
 
-At this point, our application does what we expected, so why change it? Hard dependencies between our use case and data class will potentially cause us problems.
+At this point, our application does what we expected, so why change it?
 
 The first problem is that our use case is responsible for constructing and maintaining an instance of the data class. Imagine that our data class is used by many different use case classes. Now imagine that we wanted to change the data class implementation, changing its constructor parameters, and even the class. Perhaps we want to keep the original implementation of our data class, but we have a slightly different version that we want to use in some cases. Regardless, all of those hard dependencies now have to be updated to reflect the changes. There can exist scenarios where the pain of changing a class that has widespread use throughout your application can actually prohibit the change.
 
-The more common problem is that you need to unit test your classes. Imagine that we wanted to write a unit test for our use case. Because the use case constructs its own instance of the data class, our unit test will use the real implementation of the data class. Unit Tests should be designed to run quickly, consistently, and often. Unit Tests should also test an isolated "unit" of your code (a class, or a function). If our unit tests runs real versions of all of our test subject's dependencies, they can quickly get out of hand. For example, if a dependency accesses a data, the unit test will cause that access. This means that the database will likely need to be seeded with test data prior to each test run, and can result in inconsistent or slow test results.
+The more common problem is that you need to unit test your classes. Imagine that we wanted to write a unit test for our use case. Because the use case constructs its own instance of the data class, our unit test will use the real implementation of the data class. Unit Tests should be designed to run quickly, consistently, and often. Unit Tests should also test an isolated "unit" of your code (a class, or a function). If our unit tests run real versions of our test subjects dependencies, they can quickly get out of hand. For example, if a dependency accesses a data, the unit test will cause that access. This means that the database will likely need to be seeded with test data prior to each test run, and can result in inconsistent or slow test results.
 
 Finaly, dependencies can make for code that is difficult to read and maintain. DI promotes good code design.
 
@@ -212,6 +212,110 @@ The call to ```GetService<IUseCaseThingie>``` causes the DI system (Services) to
 
 ### Container Lifetime Management
 
+So DI uses a container to store instances of the objects that it creates for you. In our case, when an instance of IDataThingie is requested by our use case, the DI system creates a new DataThingie class and stores it for us. The thing it stores it in is known as a container. So what happens if a different class also requests an instance of IDataThingie? Since the DI container already has an instance of IDataThingie stored, it could certainly just use that one, rather than constructing another one. But what if we always want to construct a new instance? Control of how instances are used by the DI system, and for how long, is done via Lifetime Management.
+
+Each service can be registered for one of three different lifetimes: **Transient**, **Scoped**, or **Singleton**.
+
+#### Transient Lifetime
+
+Transient services are created each time they are requested. It is best used for lightweight, stateless services.
+
+#### Scoped Lifetime
+
+Scoped lifetime services are created once per request.
+
+#### Singleton Lifetime
+
+Singleton lifetime creates a service instance the first time it is requested, and then continues to use that instance for all subsequent requests, for the duration of the container it is managed by. Singleton services need to be thread safe, as do any transient services that they use.
+
+#### Gotchas
+
+There are a couple of things to keep in mind about the various lifetimes. These are mentioned in the official documentation. For example, you shouldn't use constructor injection for scoped services in your custom middleware. Also, singleton services should not try to resolve scoped services.
+
+#### Demonstration
+
+Let's play around with these lifetimes. Create the following file:
+
+_Operation.cs_
+```cs
+
+using System;
+
+namespace demos
+{
+    public interface IOperation
+    {
+        Guid OperationId { get; }
+    }
+
+    public interface IOperationTransient : IOperation
+    {
+    }
+
+    public interface IOperationScoped : IOperation
+    {
+    }
+
+    public interface IOperationSingleton : IOperation
+    {
+    }
+
+    public class Operation : IOperationTransient,
+        IOperationScoped,
+        IOperationSingleton
+    {
+        public Operation()
+        {
+            OperationId = Guid.NewGuid();
+        }
+
+        public Guid OperationId { get; set; }
+    }
+}
+```
+
+Here we've defined a common interface that contains a single id property. We then defined an interface for each service lifetime type, each of which inherits the common interface. Finally, there's a class that implements the three lifetime interfaces, and constructs a unique id when it is constructed.
+
+Now let's register our implementation with each of the three lifetime interfaces, and see how they operate in action. Register the services in the _ConfigureServices_ method of your _Startup.cs_ file.
+
+```cs
+    services.AddTransient<IOperationTransient, Operation>();
+    services.AddScoped<IOperationScoped, Operation>();
+    services.AddSingleton<IOperationSingleton, Operation>();
+```
+
+Next we'll add a middleware to our pipeline that requests our three services, and outputs their ids to the console.
+
+```cs
+    app.Use(async (context, next) => {
+        var transientOp = context.RequestServices.GetService<IOperationTransient>();
+        var scopedOp = context.RequestServices.GetService<IOperationScoped>();
+        var singleton = context.RequestServices.GetService<IOperationSingleton>();
+
+        Console.WriteLine($"Transient ID: {transientOp.OperationId}");
+        Console.WriteLine($"Scoped ID: {scopedOp.OperationId}");
+        Console.WriteLine($"Singleton ID: {singleton.OperationId}");
+
+        await next.Invoke();
+
+        transientOp = context.RequestServices.GetService<IOperationTransient>();
+        scopedOp = context.RequestServices.GetService<IOperationScoped>();
+        singleton = context.RequestServices.GetService<IOperationSingleton>();
+
+        Console.WriteLine($"Transient ID: {transientOp.OperationId}");
+        Console.WriteLine($"Scoped ID: {scopedOp.OperationId}");
+        Console.WriteLine($"Singleton ID: {singleton.OperationId}");                
+    });
+```
+
+In this middleware, we begin by requesting the transient, scoped, and singleton services during the request portion of the middleware. Then, on the way back out, we request them again. Each time, we output the ids. Run the application and use a web browser to hit the endpoint.
+
+What you'll notice is that every transient operation id is different. Within a single request, the scoped id will be the same, though it will change for each request. Finally, you should notice that when you make additional requests (e.g. refresh the browser), the singleton id stays the same. Try stopping the application and re-running it. This time, the singleton id should change, since there's a new container.
+
+### Disposal of Services
+
+If a type the DI container created implements IDisposable, the container will call Dispose on it when cleaning up the services. Note that if you add an instance to the container via code, rather than letting the container construct the instance, it will not call Dispose.
+
 ### Built in Service Extensions
 
-[WIP] MVC, etc.
+When using frameworks like MVC and Entity Framework, they will often need to register services that are used by these frameworks. Many times, they will create a service collection extension method, which does all of the setup and registration. For example, MVC includes a ```services.AddMvc()``` extension method, which registers all of the MVC specific services in your application.
