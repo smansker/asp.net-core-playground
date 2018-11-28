@@ -15,7 +15,13 @@ A place to store my demos and examples for asp.net core
 3. IWebHostBuilder
 4. Middleware
 5. Dependency Injection
-6. Configuration
-7. IHostedService and BackgroundService
-8. EF Core (basic)
-9. HttpClientFactory with Policies
+6. Routing
+
+## Possible Stuff
+
+- Razor Pages
+- MVC
+- Configuration
+- IHostedService and BackgroundService
+- EF Core (basic)
+- HttpClientFactory with Policies
